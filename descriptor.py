@@ -107,6 +107,16 @@ class FuncDef:
         result += ")" + str(self.block)
         return result
 
+class Program:
+    def __init__(self):
+        self.blocks = []
+    def __str__(self):
+        result = ""
+        for block in self.blocks:
+            result += str(block)
+        return result
+
+p = Program()
 f = FuncDef("int", "main")
 f.args = ("int argc", "char **argv")
 f.block.push(StatementInst("float", "a"))
@@ -117,9 +127,6 @@ f.block[-1].block.push(StatementIf("i < 6"))
 f.block[-1].block[-1].block.push("printf(\"%d\\n\", i);")
 f.block.push(StatementControl("return", "0"))
 
-code = """
-#include <stdio.h>
-"""
-code += str(f)
-
-print(code)
+p.blocks.append("#include <stdio.h>\n")
+p.blocks.append(f)
+print(str(p))
