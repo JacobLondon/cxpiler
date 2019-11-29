@@ -1,10 +1,10 @@
 PY=python3
 FILE=descriptor.py
-INDENTOR=indent
+FORMATTER=indent
 TARGET=test.c
 
 all:
-	$(PY) $(FILE) | $(INDENTOR) > $(TARGET);cat $(TARGET)
+	$(PY) $(FILE) | $(FORMATTER) > $(TARGET)
 
 clean:
 	rm -rf $(TARGET)
