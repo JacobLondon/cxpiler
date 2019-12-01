@@ -1,7 +1,7 @@
 import sys
 from typing import List
 
-class StatementBlock:
+class Block:
     def __init__(self):
         self.statements = []
     def __str__(self):
@@ -13,37 +13,23 @@ class StatementBlock:
         return self.statements[key]
     def __setitem__(self, key, value):
         self.statements[key] = value
-    def push(self, statement):
+    def append(self, statement):
         self.statements.append(statement)
 
-class StatementAssign:
-    def __init__(self, name: str, expr):
+class StatementVar:
+    def __init__(self, name: str, dtype=None, expr=None):
         self.name = name
+        self.dtype = dtype
         self.expr = expr
     def __str__(self):
+        result = ""
+        if self.dtype:
+            result += f"{str(self.dtype)} "
+        result += str(self.name)
         if self.expr:
-            return f"{self.name} = {self.expr};"
-        else:
-            print("Error: Invalid assignment statement:", self.expr, file=sys.stderr)
-
-class StatementInst:
-    def __init__(self, dtype: str, name: str):
-        self.dtype: str = dtype
-        self.name: str = name
-    def __str__(self):
-        return f"{self.dtype} {self.name};"
-
-class StatementInit:
-    def __init__(self, dtype: str, name: str, expr):
-        self.dtype: str = dtype
-        self.name: str = name
-        self.expr = expr
-    def __str__(self):
-        if self.expr:
-            return f"{self.dtype} {self.name} = {self.expr};"
-        else:
-            print("Error: Invalid initialization statement:", self.expr, file=sys.stderr)
-            exit(-1)
+            result += f" = {str(self.expr)}"
+        result += ";"
+        return result
 
 class StatementControl:
     def __init__(self, ctrl: str, expr=None):
@@ -63,48 +49,44 @@ class StatementControl:
             print("Error: Invalid control flow statement:", self.ctrl, file=sys.stderr)
             exit(-1)
 
-class StatementIf:
-    def __init__(self, check: str):
-        self.check = check
-        self.block = StatementBlock()
+class StatementBlock:
+    def __init__(self, name: str, args, sep=","):
+        self.name = name
+        self.args = args
+        self.block = Block()
+        self.sep = sep
     def __str__(self):
-        result = f"if ({self.check})"
-        result += str(self.block)
-        return result
+        result = ""
+        if isinstance(self.name, str):
+            result += str(self.name)
+        elif isinstance(self.name, tuple) or isinstance(self.name, list):
+            for desc in self.name:
+                result += f"{str(desc)} "
+        elif isinstance(self.name, dict):
+            for t, ident in self.name:
+                result += f"{str(t)} {str(ident)}"
+        else:
+            print(f"Error - unexpected type Statement.name: {type(self.name)}", file=sys.stderr)
+            exit(-1)
 
-class StatementFor:
-    def __init__(self, init: str, check: str, inc: str):
-        self.init  = init
-        self.check = check
-        self.inc   = inc
-        self.block = StatementBlock()
-    def __str__(self):
-        result = f"for ({self.init}; {self.check}; {self.inc})"
-        result += str(self.block)
-        return result
+        result += "("
 
-class StatementWhile:
-    def __init__(self, check: str):
-        self.check = check
-        self.block = StatementBlock()
-    def __str__(self):
-        result = f"while ({self.check})"
+        if isinstance(self.args, str):
+            result += str(self.args)
+        elif isinstance(self.args, tuple) or isinstance(self.args, list):
+            for arg in self.args:
+                result += f"{str(arg)}{self.sep} "
+            result = result[:-2]
+        elif isinstance(self.args, dict):
+            for t, ident in self.args:
+                result += f"{str(t)} {str(ident)}{self.sep} "
+            result = result[:-2]
+        else:
+            print(f"Error - unexpected type Statement.args: {type(self.args)}", file=sys.stderr)
+            exit(-1)
+        
+        result += ")\n"
         result += str(self.block)
-        return result
-
-class FuncDef:
-    def __init__(self, dtype: str, name: str):
-        self.dtype: str = dtype
-        self.name: str  = name
-        self.args: List[str] = []
-        self.block = StatementBlock()
-    def __str__(self):
-        result = f"{self.dtype} {self.name} ("
-        for arg in self.args:
-            result += f"{str(arg)}, "
-        # remove last ", "
-        result = result[:-2]
-        result += ")" + str(self.block)
         return result
 
 class Program:
@@ -117,16 +99,13 @@ class Program:
         return result
 
 p = Program()
-f = FuncDef("int", "main")
-f.args = ("int argc", "char **argv")
-f.block.push(StatementInst("float", "a"))
-f.block.push(StatementInit("int", "b", "10"))
-f.block.push(StatementAssign("a", "5.0"))
-f.block.push(StatementFor("int i = 0", "i < 10", "i++"))
-f.block[-1].block.push(StatementIf("i < 6"))
-f.block[-1].block[-1].block.push("printf(\"%d\\n\", i);")
-f.block.push(StatementControl("return", "0"))
-
 p.blocks.append("#include <stdio.h>\n")
+f = StatementBlock(["int", "main"], ["int argc", "char **argv"])
+f.block.append(StatementVar("a", "int"))
+f.block.append(StatementVar("b", "float", "10"))
+f.block.append(StatementVar("a", expr="5"))
+f.block.append(StatementBlock("for", ["int i = 0", "i < 10", "i++"], sep=";"))
+f.block[-1].block.append("printf(\"%d\\n\", i);")
 p.blocks.append(f)
+
 print(str(p))
